@@ -1,0 +1,13 @@
+{
+  "name": "拾光记",
+  "short_name": "拾光记",
+  "description": "随手记录文字、图片和视频，并同步到百度网盘",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f2f6f8",
+  "theme_color": "#f2f6f8",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
+
