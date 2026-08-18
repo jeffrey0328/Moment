@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Image as ImageIcon, Mic, Video } from 'lucide-react'
 import { getAttachmentBlob } from '../lib/db'
 import type { Note, NoteAttachment } from '../types'
+import { apiUrl } from '../lib/api'
 
 export function NoteMedia({ attachment }: { attachment: NoteAttachment }) {
   const [url, setUrl] = useState<string>()
@@ -15,7 +16,7 @@ export function NoteMedia({ attachment }: { attachment: NoteAttachment }) {
         setUrl(localUrl)
       })
     } else if (attachment.remotePath) {
-      setUrl(`/api/sync/media?path=${encodeURIComponent(attachment.remotePath)}`)
+      setUrl(apiUrl(`/api/sync/media?path=${encodeURIComponent(attachment.remotePath)}`))
     }
     return () => { if (localUrl) URL.revokeObjectURL(localUrl) }
   }, [attachment.localKey, attachment.remotePath])
@@ -40,4 +41,3 @@ export function NotePreview({ note }: { note: Note }) {
     </>
   )
 }
-

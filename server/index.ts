@@ -8,7 +8,7 @@ import express from 'express'
 import cookieParser from 'cookie-parser'
 import multer from 'multer'
 import { Readable } from 'node:stream'
-import { clearToken, createOAuthState, exchangeCode, getValidToken, readToken, saveToken, validateOAuthState } from './auth.js'
+import { clearToken, consumeNativeSession, consumeOAuthReturn, createNativeSession, createOAuthState, exchangeCode, getValidToken, readToken, saveToken, validateOAuthState } from './auth.js'
 import { downloadByPath, manifestPath, remoteDir, uploadBuffer, uploadFile } from './baidu.js'
 
 const app = express()
@@ -16,6 +16,27 @@ const port = Number(process.env.PORT || 8787)
 const upload = multer({ dest: os.tmpdir(), limits: { fileSize: Number(process.env.MAX_UPLOAD_MB || 512) * 1024 * 1024 } })
 
 app.disable('x-powered-by')
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  const configuredOrigins = (process.env.NATIVE_CORS_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean)
+  const allowedOrigins = new Set([
+    'moment-app://app',
+    'capacitor://localhost',
+    'https://localhost',
+    'http://localhost',
+    ...(process.env.APP_ORIGIN ? [process.env.APP_ORIGIN.replace(/\/$/, '')] : []),
+    ...configuredOrigins,
+  ])
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader('Vary', 'Origin')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS')
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  next()
+})
 app.use(cookieParser())
 app.use(express.json({ limit: '12mb' }))
 
@@ -27,7 +48,10 @@ app.get('/api/status', (req, res) => {
 
 app.get('/api/auth/baidu', (_req, res) => {
   if (!configured()) return res.status(503).json({ error: '请先完成 .env 中的百度网盘应用配置' })
-  const state = createOAuthState(res)
+  const requestedReturn = typeof _req.query.return_to === 'string' ? _req.query.return_to : undefined
+  const allowedReturns = new Set(['moment://oauth-complete', 'com.jeffrey.moment://oauth-complete'])
+  const returnTo = requestedReturn && allowedReturns.has(requestedReturn) ? requestedReturn : undefined
+  const state = createOAuthState(res, returnTo)
   const query = new URLSearchParams({
     response_type: 'code', client_id: process.env.BAIDU_APP_KEY!, redirect_uri: process.env.BAIDU_REDIRECT_URI!, scope: 'basic,netdisk', display: 'popup', state,
   })
@@ -40,12 +64,27 @@ app.get('/api/auth/baidu/callback', async (req, res) => {
     const state = String(req.query.state || '')
     if (!validateOAuthState(req, res, state)) return res.status(400).send('授权状态校验失败，请返回应用重试。')
     if (!code) return res.status(400).send('没有收到授权码。')
-    saveToken(res, await exchangeCode(code))
+    const token = await exchangeCode(code)
+    const nativeReturn = consumeOAuthReturn(req, res)
+    if (nativeReturn) {
+      const returnUrl = new URL(nativeReturn)
+      returnUrl.searchParams.set('native_code', createNativeSession(token))
+      return res.redirect(returnUrl.toString())
+    }
+    saveToken(res, token)
     const appOrigin = (process.env.APP_ORIGIN || '').replace(/\/$/, '')
     res.redirect(appOrigin ? `${appOrigin}/?baidu=connected` : '/?baidu=connected')
   } catch (error) {
     res.status(502).send(error instanceof Error ? error.message : '百度授权失败')
   }
+})
+
+app.post('/api/auth/baidu/native-session', (req, res) => {
+  const code = typeof req.body?.code === 'string' ? req.body.code : ''
+  const token = consumeNativeSession(code)
+  if (!token) return res.status(400).json({ error: '应用授权凭证已失效，请重新连接百度网盘' })
+  saveToken(res, token)
+  res.json({ ok: true })
 })
 
 app.post('/api/auth/baidu/disconnect', (_req, res) => {
