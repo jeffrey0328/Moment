@@ -2,13 +2,16 @@
 
 一个手机和电脑都能用的离线优先备忘录。文字、图片和视频会先安全保存在当前设备，连接百度网盘后自动上传；每次打开应用都会拉取云端清单并按更新时间合并。
 
+除网页/PWA 外，项目现在还包含 Android、iOS 与 Electron 原生应用壳。应用安装后从桌面图标启动，内部复用同一套网页界面；详见[原生应用构建说明](docs/NATIVE_APPS.md)。
+
 ![响应式设计基准](docs/design/shiguang-responsive-concept.png)
 
 ## 已实现
 
 - 响应式桌面端与手机端界面，支持安装为 PWA
+- Android/iOS Capacitor 应用与 Windows/macOS/Linux Electron 应用
 - 文字记录、图片附件、视频附件与本地预览
-- 中文语音转文字（使用浏览器 Web Speech API）
+- 中文语音转文字（手机应用使用原生系统识别，网页/桌面使用 Web Speech API）
 - IndexedDB 离线存储，断网可记、联网后补传
 - 新内容自动同步，启动时自动检查更新
 - 百度 OAuth 2.0 授权、刷新令牌、加密 HttpOnly Cookie
@@ -35,6 +38,21 @@ npm start
 ```
 
 生产服务默认运行在 <http://localhost:8787>，同时提供前端静态文件和 `/api` 接口。
+
+## 原生应用
+
+```bash
+# Windows/macOS/Linux 开发壳
+npm run desktop:dev
+
+# 当前电脑平台安装包
+npm run desktop:dist
+
+# 同步 Android/iOS 原生工程
+npm run mobile:sync
+```
+
+原生安装包必须通过 `VITE_API_BASE_URL` 指向已部署的 HTTPS 后端，才能使用百度网盘同步。未配置时本地离线记录仍然可用。完整步骤见 [docs/NATIVE_APPS.md](docs/NATIVE_APPS.md)。
 
 ## 连接百度网盘
 
@@ -91,4 +109,3 @@ npm run build
 ```
 
 项目已在 1440×1000 桌面视口和 390×844 手机视口完成真实浏览器验收，包括文字与图片记录、刷新后持久化、手机端编辑面板、设置状态和控制台错误检查。
-

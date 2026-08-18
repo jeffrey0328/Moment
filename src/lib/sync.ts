@@ -1,10 +1,13 @@
 import { getAllNotesIncludingDeleted, getAttachmentBlob, putNote, putNotes, setMeta } from './db'
 import type { CloudStatus, Note } from '../types'
+import { apiUrl, hasApiEndpoint, oauthReturnUrl } from './api'
+import { isNativeMobile, mobileOAuthReturnUrl, openMobileOAuth } from './native'
 
 const MANIFEST_VERSION = 1
 
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, { credentials: 'include', ...options })
+  if (!hasApiEndpoint()) throw new Error('原生安装包尚未配置同步后端地址')
+  const response = await fetch(apiUrl(url), { credentials: 'include', ...options })
   if (!response.ok) {
     const payload = await response.json().catch(() => ({})) as { error?: string }
     throw new Error(payload.error || `请求失败（${response.status}）`)
@@ -13,11 +16,17 @@ async function api<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export function getCloudStatus() {
+  if (!hasApiEndpoint()) return Promise.resolve<CloudStatus>({ configured: false, connected: false })
   return api<CloudStatus>('/api/status')
 }
 
 export function connectBaidu() {
-  window.location.href = '/api/auth/baidu'
+  const returnTo = oauthReturnUrl() || mobileOAuthReturnUrl()
+  const target = new URL(apiUrl('/api/auth/baidu'), window.location.href)
+  if (returnTo) target.searchParams.set('return_to', returnTo)
+  if (window.momentDesktop?.isDesktop) window.open(target.toString(), '_blank', 'noopener,noreferrer')
+  else if (isNativeMobile()) void openMobileOAuth(target.toString())
+  else window.location.href = target.toString()
 }
 
 export async function disconnectBaidu() {
@@ -94,4 +103,3 @@ export function mergeNotes(local: Note[], remote: Note[]) {
   }
   return [...map.values()]
 }
-

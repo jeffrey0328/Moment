@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Image, Mic, MicOff, Paperclip, Send, Video, X } from 'lucide-react'
+import { SpeechRecognition } from '@capgo/capacitor-speech-recognition'
+import type { PluginListenerHandle } from '@capacitor/core'
 import type { Note, NoteAttachment } from '../types'
 import { putAttachmentBlob, putNote } from '../lib/db'
+import { isNativeMobile } from '../lib/native'
 
 interface SpeechRecognitionEventLike extends Event {
   results: { [index: number]: { [index: number]: { transcript: string }; isFinal: boolean }; length: number }
@@ -43,10 +46,22 @@ export function Composer({ compact, expanded = true, onExpand, onSaved, notify }
   const [usedVoice, setUsedVoice] = useState(false)
   const [saving, setSaving] = useState(false)
   const recognition = useRef<SpeechRecognitionLike | null>(null)
+  const nativeSpeechListener = useRef<PluginListenerHandle | null>(null)
+  const nativeStateListener = useRef<PluginListenerHandle | null>(null)
+  const nativeSpeechBase = useRef('')
   const fileInput = useRef<HTMLInputElement>(null)
+  const filesRef = useRef<PendingFile[]>([])
   const acceptMode = useRef<'image/*' | 'video/*' | 'image/*,video/*'>('image/*,video/*')
 
-  useEffect(() => () => files.forEach((item) => URL.revokeObjectURL(item.url)), [files])
+  useEffect(() => { filesRef.current = files }, [files])
+
+  useEffect(() => () => {
+    filesRef.current.forEach((item) => URL.revokeObjectURL(item.url))
+    recognition.current?.stop()
+    void SpeechRecognition.stop().catch(() => undefined)
+    void nativeSpeechListener.current?.remove()
+    void nativeStateListener.current?.remove()
+  }, [])
 
   const chooseFiles = (accept: typeof acceptMode.current) => {
     acceptMode.current = accept
@@ -64,7 +79,55 @@ export function Composer({ compact, expanded = true, onExpand, onSaved, notify }
     setFiles((current) => [...current, ...next])
   }
 
-  const toggleVoice = () => {
+  const toggleVoice = async () => {
+    if (isNativeMobile()) {
+      if (listening) {
+        await SpeechRecognition.stop().catch(() => undefined)
+        await nativeSpeechListener.current?.remove()
+        await nativeStateListener.current?.remove()
+        nativeSpeechListener.current = null
+        nativeStateListener.current = null
+        setListening(false)
+        return
+      }
+      try {
+        const { available } = await SpeechRecognition.available()
+        if (!available) {
+          notify('这台设备没有可用的系统语音识别服务')
+          return
+        }
+        const permission = await SpeechRecognition.requestPermissions()
+        if (permission.speechRecognition !== 'granted') {
+          notify('需要允许麦克风和语音识别权限才能输入')
+          return
+        }
+        nativeSpeechBase.current = text.trim() ? `${text.trim()} ` : ''
+        nativeSpeechListener.current = await SpeechRecognition.addListener('partialResults', (event) => {
+          const transcript = event.accumulatedText || event.matches?.[0] || event.accumulated || ''
+          setText(`${nativeSpeechBase.current}${transcript}`)
+        })
+        nativeStateListener.current = await SpeechRecognition.addListener('listeningState', (event) => {
+          if (event.state === 'stopped' || event.status === 'stopped') setListening(false)
+        })
+        await SpeechRecognition.start({
+          language: 'zh-CN',
+          maxResults: 3,
+          partialResults: true,
+          addPunctuation: true,
+          contextualStrings: ['拾光记', '百度网盘', '备忘录'],
+        })
+        setUsedVoice(true)
+        setListening(true)
+      } catch {
+        await nativeSpeechListener.current?.remove()
+        await nativeStateListener.current?.remove()
+        nativeSpeechListener.current = null
+        nativeStateListener.current = null
+        setListening(false)
+        notify('语音识别启动失败，请检查系统权限和语言服务')
+      }
+      return
+    }
     if (listening) {
       recognition.current?.stop()
       setListening(false)
@@ -122,6 +185,14 @@ export function Composer({ compact, expanded = true, onExpand, onSaved, notify }
     await Promise.all(files.map((item) => putAttachmentBlob(`${id}:${item.id}`, item.file)))
     await putNote(note)
     recognition.current?.stop()
+    if (isNativeMobile()) {
+      await SpeechRecognition.stop().catch(() => undefined)
+      await nativeSpeechListener.current?.remove()
+      await nativeStateListener.current?.remove()
+      nativeSpeechListener.current = null
+      nativeStateListener.current = null
+      setListening(false)
+    }
     files.forEach((item) => URL.revokeObjectURL(item.url))
     setText('')
     setFiles([])
@@ -155,7 +226,7 @@ export function Composer({ compact, expanded = true, onExpand, onSaved, notify }
       )}
       <div className="composer-actions">
         <div className="composer-tools">
-          <button className={listening ? 'active recording' : ''} onClick={toggleVoice}>{listening ? <MicOff /> : <Mic />}<span>{listening ? '停止' : '语音'}</span></button>
+          <button className={listening ? 'active recording' : ''} onClick={() => void toggleVoice()}>{listening ? <MicOff /> : <Mic />}<span>{listening ? '停止' : '语音'}</span></button>
           <button onClick={() => chooseFiles('image/*')}><Image /><span>图片</span></button>
           <button onClick={() => chooseFiles('video/*')}><Video /><span>视频</span></button>
           <button className="paperclip" onClick={() => chooseFiles('image/*,video/*')} aria-label="添加附件"><Paperclip /></button>

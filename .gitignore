@@ -8,3 +8,9 @@ dist-server/
 coverage/
 data/
 *.tsbuildinfo
+release/
+release-native/
+android/local.properties
+android/.gradle/
+android/app/build/
+ios/DerivedData/
