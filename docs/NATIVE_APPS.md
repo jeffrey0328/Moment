@@ -26,11 +26,25 @@ OAuth 使用短期、一次性 `native_code` 回跳，不会把百度 access tok
 - Electron：`moment://oauth-complete`
 - Android/iOS：`com.jeffrey.moment://oauth-complete`
 
-服务端收到 `native_code` 后才为应用 WebView 设置加密 HttpOnly Cookie。一次性代码有效期为 2 分钟，兑换后立即删除。
+服务端把令牌加密后交给应用：优先尝试 HttpOnly Cookie；Android WebView 可能拦截跨站 Cookie，因此原生客户端还会保存加密 Session，并在请求中带 `Authorization: Bearer`。一次性 `native_code` 有效期 2 分钟，兑换后立即删除，并写入 `DATA_DIR`（默认 `./data`），避免进程重启丢掉正在进行的授权。多实例部署请把该目录放到共享卷，或配置粘性会话。
 
 ## 配置同步后端
 
-先把 Node 服务部署到 HTTPS 域名，例如 `https://api.example.com`。服务端使用 `.env.example`；原生前端构建使用：
+先把 Node 服务部署到 HTTPS 域名，例如 `https://api.example.com`。最快的方式是 Docker：
+
+```bash
+cp .env.example .env
+# 填写 BAIDU_APP_KEY、BAIDU_SECRET_KEY、BAIDU_REDIRECT_URI、APP_SECRET
+# 生产环境设置：
+# NODE_ENV=production
+# BAIDU_REDIRECT_URI=https://api.example.com/api/auth/baidu/callback
+# APP_ORIGIN=https://你的网页域名
+docker compose up -d --build
+```
+
+前面需要一层 HTTPS 反向代理（Caddy、Nginx 或云平台自带证书）指向 `127.0.0.1:8787`。健康检查地址是 `/api/health`。
+
+服务端使用 `.env.example`；原生前端构建使用：
 
 ```dotenv
 VITE_API_BASE_URL=https://api.example.com
@@ -110,4 +124,4 @@ npm run ios:open
 - `Moment-Android-APK`：可安装调试 APK
 - `Moment-Windows-Installer`：Windows NSIS 安装包
 
-在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 添加 `MOMENT_API_URL`，值为已部署的 HTTPS 后端地址。之后在 **Actions → Build native apps → Run workflow** 运行。发布 `v*` 标签时也会自动构建。
+在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 添加 `MOMENT_API_URL`，值为已部署的 HTTPS 后端地址。之后推送到 `main`、打开 PR、发布 `v*` 标签，或在 **Actions → Build native apps → Run workflow** 手动运行，都会构建安装包。

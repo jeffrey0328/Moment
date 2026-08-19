@@ -13,6 +13,7 @@
     "build:web": "tsc -b && vite build",
     "build": "tsc -b && vite build && tsc -p server/tsconfig.json",
     "start": "node dist-server/index.js",
+    "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc -b --pretty false && tsc -p server/tsconfig.json --pretty false",
     "desktop:dev": "concurrently -k -s first -n app,shell -c cyan,magenta \"npm run dev\" \"wait-on http://localhost:5173 && cross-env MOMENT_WEB_URL=http://localhost:5173 electron .\"",
     "desktop:pack": "npm run build:web && electron-builder --dir",
