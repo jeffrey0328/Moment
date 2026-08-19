@@ -2,6 +2,7 @@ import { App as CapacitorApp } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'
 import { Capacitor } from '@capacitor/core'
 import { apiUrl } from './api'
+import { saveClientSession } from './session'
 
 export function isNativeMobile() {
   return Capacitor.isNativePlatform()
@@ -38,6 +39,8 @@ async function redeemNativeCode(code: string, closeMobileBrowser = false) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code }),
   })
+  const payload = await response.json().catch(() => ({})) as { session?: string }
+  if (response.ok && payload.session) saveClientSession(payload.session)
   if (closeMobileBrowser) await Browser.close().catch(() => undefined)
   window.location.replace(response.ok ? './?baidu=connected' : './?baidu=error')
 }

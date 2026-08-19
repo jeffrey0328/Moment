@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core'
+
 const configuredBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '')
 
 export function apiUrl(path: string) {
@@ -6,7 +8,10 @@ export function apiUrl(path: string) {
 }
 
 export function hasApiEndpoint() {
-  return Boolean(configuredBase) || ['http:', 'https:'].includes(window.location.protocol)
+  if (configuredBase) return true
+  if (typeof window !== 'undefined' && window.momentDesktop?.isDesktop) return false
+  if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) return false
+  return ['http:', 'https:'].includes(window.location.protocol)
 }
 
 export function oauthReturnUrl() {

@@ -8,7 +8,8 @@ import express from 'express'
 import cookieParser from 'cookie-parser'
 import multer from 'multer'
 import { Readable } from 'node:stream'
-import { clearToken, consumeNativeSession, consumeOAuthReturn, createNativeSession, createOAuthState, exchangeCode, getValidToken, readToken, saveToken, validateOAuthState } from './auth.js'
+import { clearToken, consumeOAuthReturn, createOAuthState, encodeSession, exchangeCode, getValidToken, readToken, saveToken, validateOAuthState } from './auth.js'
+import { consumeNativeSession, createNativeSession } from './native-sessions.js'
 import { downloadByPath, manifestPath, remoteDir, uploadBuffer, uploadFile } from './baidu.js'
 
 const app = express()
@@ -31,7 +32,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Vary', 'Origin')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS')
   }
   if (req.method === 'OPTIONS') return res.sendStatus(204)
@@ -41,6 +42,10 @@ app.use(cookieParser())
 app.use(express.json({ limit: '12mb' }))
 
 const configured = () => Boolean(process.env.BAIDU_APP_KEY && process.env.BAIDU_SECRET_KEY && process.env.BAIDU_REDIRECT_URI && process.env.APP_SECRET)
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true })
+})
 
 app.get('/api/status', (req, res) => {
   res.json({ configured: configured(), connected: configured() && Boolean(readToken(req)), remoteDir: remoteDir() })
@@ -68,7 +73,7 @@ app.get('/api/auth/baidu/callback', async (req, res) => {
     const nativeReturn = consumeOAuthReturn(req, res)
     if (nativeReturn) {
       const returnUrl = new URL(nativeReturn)
-      returnUrl.searchParams.set('native_code', createNativeSession(token))
+      returnUrl.searchParams.set('native_code', await createNativeSession(token))
       return res.redirect(returnUrl.toString())
     }
     saveToken(res, token)
@@ -79,12 +84,12 @@ app.get('/api/auth/baidu/callback', async (req, res) => {
   }
 })
 
-app.post('/api/auth/baidu/native-session', (req, res) => {
+app.post('/api/auth/baidu/native-session', async (req, res) => {
   const code = typeof req.body?.code === 'string' ? req.body.code : ''
-  const token = consumeNativeSession(code)
+  const token = await consumeNativeSession(code)
   if (!token) return res.status(400).json({ error: '应用授权凭证已失效，请重新连接百度网盘' })
   saveToken(res, token)
-  res.json({ ok: true })
+  res.json({ ok: true, session: encodeSession(token) })
 })
 
 app.post('/api/auth/baidu/disconnect', (_req, res) => {

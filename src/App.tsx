@@ -240,12 +240,12 @@ function SettingsPanel({ cloud, lastSync, phase, onClose, onConnect, onDisconnec
       <section className="settings-panel">
         <header><button onClick={onClose}><ChevronLeft /></button><div><h2>同步设置</h2><p>让每台设备看到同一份记录</p></div><button onClick={onClose}><X /></button></header>
         <div className="cloud-hero"><span><Cloud /></span><div><strong>百度网盘</strong><p>{cloud.connected ? cloud.accountName || '已安全连接' : cloud.configured ? '等待账号授权' : '服务端尚未配置应用凭证'}</p></div><i className={cloud.connected ? 'connected' : ''}>{cloud.connected ? '已连接' : '未连接'}</i></div>
-        {!cloud.configured && <div className="setup-help"><strong>需要完成一次服务端配置</strong><p>复制项目中的 <code>.env.example</code> 为 <code>.env</code>，填写开放平台的 App Key、Secret、回调地址和随机加密密钥，然后重启服务。</p></div>}
+        {!cloud.configured && <div className="setup-help"><strong>需要完成一次服务端配置</strong><p>网页请复制 <code>.env.example</code> 为 <code>.env</code> 并填写开放平台凭证后重启服务。手机或桌面安装包还要在构建时设置 <code>VITE_API_BASE_URL</code> 指向该 HTTPS 后端，否则只能离线使用。</p></div>}
         <div className="setting-row"><span>同步目录</span><strong>{cloud.remoteDir || '/apps/拾光记'}</strong></div>
         <div className="setting-row"><span>同步方式</span><strong>新内容自动上传</strong></div>
         <div className="setting-row"><span>最近同步</span><strong>{lastSync ? new Date(lastSync).toLocaleString('zh-CN') : '尚未同步'}</strong></div>
         {cloud.connected ? <><button className="primary-setting" disabled={phase === 'syncing'} onClick={onSync}>{phase === 'syncing' ? <LoaderCircle className="spin" /> : <RefreshCw />}立即检查更新</button><button className="disconnect" onClick={() => void onDisconnect()}>断开账号</button></> : <button className="primary-setting" disabled={!cloud.configured} onClick={onConnect}><Cloud />连接百度网盘</button>}
-        <p className="privacy-note">记录内容只保存在你的浏览器和你授权的百度网盘目录中。应用不会把网盘令牌暴露给前端。</p>
+        <p className="privacy-note">记录内容只保存在你的设备和你授权的百度网盘目录中。网盘令牌由服务端加密保管，前端无法解密出明文令牌。</p>
       </section>
     </div>
   )

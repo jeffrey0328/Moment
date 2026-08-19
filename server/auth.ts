@@ -18,7 +18,6 @@ interface TokenPayload {
 const TOKEN_COOKIE = 'shiguang_baidu_token'
 const STATE_COOKIE = 'shiguang_oauth_state'
 const RETURN_COOKIE = 'shiguang_oauth_return'
-const nativeSessions = new Map<string, { token: BaiduToken; expiresAt: number }>()
 
 function key() {
   const secret = process.env.APP_SECRET
@@ -80,9 +79,19 @@ export function consumeOAuthReturn(req: Request, res: Response) {
   return returnTo
 }
 
+export function encodeSession(token: BaiduToken) {
+  return encrypt(token)
+}
+
 export function readToken(req: Request): BaiduToken | undefined {
   const raw = req.cookies?.[TOKEN_COOKIE]
-  return raw ? decrypt<BaiduToken>(raw) : undefined
+  if (raw) {
+    const token = decrypt<BaiduToken>(raw)
+    if (token) return token
+  }
+  const header = req.headers.authorization
+  if (header?.startsWith('Bearer ')) return decrypt<BaiduToken>(header.slice(7).trim())
+  return undefined
 }
 
 export function saveToken(res: Response, token: BaiduToken) {
@@ -91,20 +100,6 @@ export function saveToken(res: Response, token: BaiduToken) {
 
 export function clearToken(res: Response) {
   res.clearCookie(TOKEN_COOKIE, cookieOptions())
-}
-
-export function createNativeSession(token: BaiduToken) {
-  const code = crypto.randomBytes(32).toString('base64url')
-  nativeSessions.set(code, { token, expiresAt: Date.now() + 2 * 60 * 1000 })
-  setTimeout(() => nativeSessions.delete(code), 2 * 60 * 1000).unref()
-  return code
-}
-
-export function consumeNativeSession(code: string) {
-  const session = nativeSessions.get(code)
-  nativeSessions.delete(code)
-  if (!session || session.expiresAt < Date.now()) return undefined
-  return session.token
 }
 
 export async function exchangeCode(code: string): Promise<BaiduToken> {

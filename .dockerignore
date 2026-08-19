@@ -1,0 +1,16 @@
+.git
+.github
+android
+ios
+desktop
+docs
+release
+release-native
+dist
+dist-server
+coverage
+data
+node_modules
+.env
+*.log
+.vite

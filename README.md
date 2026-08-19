@@ -105,7 +105,20 @@ NODE_ENV=production
 
 ```bash
 npm run typecheck
+npm test
 npm run build
 ```
 
 项目已在 1440×1000 桌面视口和 390×844 手机视口完成真实浏览器验收，包括文字与图片记录、刷新后持久化、手机端编辑面板、设置状态和控制台错误检查。
+
+## 部署同步后端
+
+原生安装包要连接百度网盘，必须先有一个公网 HTTPS 后端。可用 Docker：
+
+```bash
+cp .env.example .env
+# 填写百度开放平台凭证和 APP_SECRET
+docker compose up -d --build
+```
+
+然后在反向代理上启用 HTTPS，把百度回调设为 `https://你的域名/api/auth/baidu/callback`，并在 GitHub Actions 仓库 Secrets 中设置 `MOMENT_API_URL`。完整步骤见 [docs/NATIVE_APPS.md](docs/NATIVE_APPS.md)。
