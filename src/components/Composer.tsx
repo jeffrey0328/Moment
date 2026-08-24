@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Image, Mic, MicOff, Paperclip, Send, Video, X } from 'lucide-react'
 import { SpeechRecognition } from '@capgo/capacitor-speech-recognition'
-import type { PluginListenerHandle } from '@capacitor/core'
+import { Capacitor, type PluginListenerHandle } from '@capacitor/core'
 import type { Note, NoteAttachment } from '../types'
 import { putAttachmentBlob, putNote } from '../lib/db'
-import { isNativeMobile } from '../lib/native'
 
 interface SpeechRecognitionEventLike extends Event {
   results: { [index: number]: { [index: number]: { transcript: string }; isFinal: boolean }; length: number }
@@ -80,7 +79,7 @@ export function Composer({ compact, expanded = true, onExpand, onSaved, notify }
   }
 
   const toggleVoice = async () => {
-    if (isNativeMobile()) {
+    if (Capacitor.isNativePlatform()) {
       if (listening) {
         await SpeechRecognition.stop().catch(() => undefined)
         await nativeSpeechListener.current?.remove()
@@ -114,7 +113,7 @@ export function Composer({ compact, expanded = true, onExpand, onSaved, notify }
           maxResults: 3,
           partialResults: true,
           addPunctuation: true,
-          contextualStrings: ['拾光记', '百度网盘', '备忘录'],
+          contextualStrings: ['拾光记', '阿里云', '备忘录'],
         })
         setUsedVoice(true)
         setListening(true)
@@ -185,7 +184,7 @@ export function Composer({ compact, expanded = true, onExpand, onSaved, notify }
     await Promise.all(files.map((item) => putAttachmentBlob(`${id}:${item.id}`, item.file)))
     await putNote(note)
     recognition.current?.stop()
-    if (isNativeMobile()) {
+    if (Capacitor.isNativePlatform()) {
       await SpeechRecognition.stop().catch(() => undefined)
       await nativeSpeechListener.current?.remove()
       await nativeStateListener.current?.remove()

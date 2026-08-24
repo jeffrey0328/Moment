@@ -24,13 +24,13 @@ test('mergeNotes keeps the newer record and local attachment blobs', () => {
     id: 'a',
     updatedAt: '2026-08-18T12:00:00.000Z',
     text: '云端新稿',
-    attachments: [{ id: 'img', name: '1.jpg', mime: 'image/jpeg', size: 12, kind: 'image', remotePath: '/apps/拾光记/shiguang-a-img.jpg' }],
+    attachments: [{ id: 'img', name: '1.jpg', mime: 'image/jpeg', size: 12, kind: 'image', remotePath: 'shiguang/user-a/shiguang-a-img.jpg' }],
   })
 
   const [merged] = mergeNotes([local], [remote])
   assert.equal(merged.text, '云端新稿')
   assert.equal(merged.attachments[0]?.localKey, 'blob-1')
-  assert.equal(merged.attachments[0]?.remotePath, '/apps/拾光记/shiguang-a-img.jpg')
+  assert.equal(merged.attachments[0]?.remotePath, 'shiguang/user-a/shiguang-a-img.jpg')
 })
 
 test('mergeNotes treats a newer tombstone as deleted', () => {

@@ -11,22 +11,17 @@
 
 ## 关键架构
 
-应用界面、IndexedDB 离线数据和附件缓存打包在客户端内。百度 OAuth 和网盘 API 仍由 HTTPS 服务端处理，因为 `BAIDU_SECRET_KEY` 绝不能放进 APK、IPA 或桌面安装包。
+应用界面、IndexedDB 离线数据和附件缓存打包在客户端内。账号登录和阿里云 OSS 访问仍由 HTTPS 服务端处理，因为 `OSS_ACCESS_KEY_SECRET` 绝不能放进 APK、IPA 或桌面安装包。
 
 ```text
 Android / iOS / Electron
         │
         ├── 本地打包的 React + IndexedDB
         │
-        └── HTTPS → Moment Node API → 百度网盘开放平台
+        └── HTTPS → Moment Node API → 阿里云 OSS
 ```
 
-OAuth 使用短期、一次性 `native_code` 回跳，不会把百度 access token 放进 URL：
-
-- Electron：`moment://oauth-complete`
-- Android/iOS：`com.jeffrey.moment://oauth-complete`
-
-服务端把令牌加密后交给应用：优先尝试 HttpOnly Cookie；Android WebView 可能拦截跨站 Cookie，因此原生客户端还会保存加密 Session，并在请求中带 `Authorization: Bearer`。一次性 `native_code` 有效期 2 分钟，兑换后立即删除，并写入 `DATA_DIR`（默认 `./data`），避免进程重启丢掉正在进行的授权。多实例部署请把该目录放到共享卷，或配置粘性会话。
+登录在应用内完成，不打开第三方 OAuth 窗口。服务端把会话加密后交给应用：优先尝试 HttpOnly Cookie；Android WebView 可能拦截跨站 Cookie，因此原生客户端还会保存加密 Session，并在请求中带 `Authorization: Bearer`。账号表写在 `DATA_DIR`（默认 `./data`）。多实例部署请把该目录放到共享卷。
 
 ## 配置同步后端
 
@@ -34,11 +29,11 @@ OAuth 使用短期、一次性 `native_code` 回跳，不会把百度 access tok
 
 ```bash
 cp .env.example .env
-# 填写 BAIDU_APP_KEY、BAIDU_SECRET_KEY、BAIDU_REDIRECT_URI、APP_SECRET
+# 填写 OSS_REGION、OSS_BUCKET、OSS_ACCESS_KEY_ID、OSS_ACCESS_KEY_SECRET、APP_SECRET
 # 生产环境设置：
 # NODE_ENV=production
-# BAIDU_REDIRECT_URI=https://api.example.com/api/auth/baidu/callback
 # APP_ORIGIN=https://你的网页域名
+# SYNC_INVITE_CODE=随机邀请码
 docker compose up -d --build
 ```
 
@@ -50,13 +45,9 @@ docker compose up -d --build
 VITE_API_BASE_URL=https://api.example.com
 ```
 
-本地手动构建时，可将 `.env.native.example` 复制为 `.env.production`。不配置该值时，安装包仍可离线记录文字、图片、视频和语音，但百度网盘连接按钮会保持未配置状态。
+本地手动构建时，可将 `.env.native.example` 复制为 `.env.production`。不配置该值时，安装包仍可离线记录文字、图片、视频和语音，但同步登录会保持未配置状态。
 
-百度开放平台中登记的 OAuth 回调仍然是服务端地址：
-
-```text
-https://api.example.com/api/auth/baidu/callback
-```
+Bucket 请设为私有。对象路径为 `{OSS_PREFIX}/{userId}/`，不同账号互相隔离。
 
 ## Windows / macOS / Linux
 
@@ -78,7 +69,7 @@ npm run desktop:dist
 npm run desktop:pack
 ```
 
-Electron 壳启用了 `contextIsolation`、renderer sandbox、`nodeIntegration: false`、`webSecurity: true` 和导航/权限白名单。远程内容只能在独立百度授权窗口中打开。
+Electron 壳启用了 `contextIsolation`、renderer sandbox、`nodeIntegration: false`、`webSecurity: true` 和导航/权限白名单。同步登录在应用窗口内完成。
 
 跨系统产物需要在对应系统构建。对外分发前应配置 Windows Authenticode 和 Apple Developer ID 签名，否则系统会显示“未知发布者”。
 
@@ -109,7 +100,7 @@ npm run mobile:sync
 npm run ios:open
 ```
 
-在 Xcode 中选择开发者 Team、真机或 Archive。Info.plist 已包含麦克风、语音识别、相机、相册权限说明以及 OAuth URL Scheme。
+在 Xcode 中选择开发者 Team、真机或 Archive。Info.plist 已包含麦克风、语音识别、相机、相册权限说明。
 
 ## 原生语音输入
 

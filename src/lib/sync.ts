@@ -1,9 +1,8 @@
 import { getAllNotesIncludingDeleted, getAttachmentBlob, putNote, putNotes, setMeta } from './db'
 import type { CloudStatus, Note } from '../types'
-import { apiUrl, hasApiEndpoint, oauthReturnUrl } from './api'
+import { apiUrl, hasApiEndpoint } from './api'
 import { mergeNotes } from './merge'
-import { isNativeMobile, mobileOAuthReturnUrl, openMobileOAuth } from './native'
-import { authHeaders, clearClientSession } from './session'
+import { authHeaders, clearClientSession, saveClientSession } from './session'
 
 const MANIFEST_VERSION = 1
 
@@ -21,23 +20,36 @@ async function api<T>(url: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+type AuthResult = CloudStatus & { ok: true; session?: string }
+
 export function getCloudStatus() {
   if (!hasApiEndpoint()) return Promise.resolve<CloudStatus>({ configured: false, connected: false })
   return api<CloudStatus>('/api/status')
 }
 
-export function connectBaidu() {
-  const returnTo = oauthReturnUrl() || mobileOAuthReturnUrl()
-  const target = new URL(apiUrl('/api/auth/baidu'), window.location.href)
-  if (returnTo) target.searchParams.set('return_to', returnTo)
-  if (window.momentDesktop?.isDesktop) window.open(target.toString(), '_blank', 'noopener,noreferrer')
-  else if (isNativeMobile()) void openMobileOAuth(target.toString())
-  else window.location.href = target.toString()
+export async function registerAccount(username: string, password: string, inviteCode?: string) {
+  const result = await api<AuthResult>('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, inviteCode: inviteCode || undefined }),
+  })
+  if (result.session) saveClientSession(result.session)
+  return result
 }
 
-export async function disconnectBaidu() {
+export async function loginAccount(username: string, password: string) {
+  const result = await api<AuthResult>('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+  if (result.session) saveClientSession(result.session)
+  return result
+}
+
+export async function logoutAccount() {
   try {
-    await api('/api/auth/baidu/disconnect', { method: 'POST' })
+    await api('/api/auth/logout', { method: 'POST' })
   } finally {
     clearClientSession()
   }
