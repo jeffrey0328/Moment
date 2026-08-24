@@ -240,6 +240,7 @@ export default function App() {
           onDisconnect={async () => {
             await logoutAccount()
             setCloud((value) => ({ ...value, connected: false, accountName: undefined }))
+            setPhase('idle')
             notify('已退出同步账号')
           }}
           onSync={() => void runSync()}
@@ -300,7 +301,7 @@ function SettingsPanel({ cloud, lastSync, phase, onClose, onLoggedIn, onDisconne
         <header><button onClick={onClose}><ChevronLeft /></button><div><h2>同步设置</h2><p>让每台设备看到同一份记录</p></div><button onClick={onClose}><X /></button></header>
         <div className="cloud-hero"><span><Cloud /></span><div><strong>阿里云 OSS</strong><p>{heroDetail}</p></div><i className={cloud.connected ? 'connected' : ''}>{cloud.connected ? '已连接' : '未连接'}</i></div>
         {!cloud.configured && <div className="setup-help"><strong>需要完成一次服务端配置</strong><p>网页请复制 <code>.env.example</code> 为 <code>.env</code>，填写阿里云 OSS 与 <code>APP_SECRET</code> 后重启服务。手机或桌面安装包还要在构建时设置 <code>VITE_API_BASE_URL</code> 指向该 HTTPS 后端，否则只能离线使用。</p></div>}
-        <div className="setting-row"><span>对象前缀</span><strong>{cloud.remoteDir || 'oss://bucket/shiguang/&lt;账号&gt;/'}</strong></div>
+        <div className="setting-row"><span>对象前缀</span><strong>{cloud.remoteDir || 'oss://bucket/shiguang/<账号>/'}</strong></div>
         <div className="setting-row"><span>同步方式</span><strong>新内容自动上传</strong></div>
         <div className="setting-row"><span>最近同步</span><strong>{lastSync ? new Date(lastSync).toLocaleString('zh-CN') : '尚未同步'}</strong></div>
         {cloud.connected ? (
