@@ -133,11 +133,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .setup-help code { background: rgba(127,80,36,.09); padding: 2px 4px; border-radius: 4px; }
 .setting-row { min-height: 57px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .setting-row span { color: #79858d; }
-.setting-row strong { text-align: right; font-weight: 610; }
+.setting-row strong { text-align: right; font-weight: 610; word-break: break-all; }
 .primary-setting { width: 100%; margin-top: 26px; height: 46px; display: flex; align-items: center; justify-content: center; gap: 9px; border-radius: 9px; color: white; background: var(--accent); font-weight: 650; }
 .primary-setting:disabled { background: #cfd6da; cursor: not-allowed; }
 .primary-setting svg { width: 18px; }
 .disconnect { width: 100%; height: 42px; color: #8a969e; background: transparent; margin-top: 5px; }
+.auth-form { margin-top: 22px; display: flex; flex-direction: column; gap: 12px; }
+.auth-form label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #79858d; }
+.auth-form input { height: 42px; border: 1px solid #dfe4e7; border-radius: 9px; padding: 0 12px; background: #fbfcfd; }
+.auth-form input:focus { border-color: #a8ccec; box-shadow: 0 0 0 3px rgba(22,129,248,.08); }
+.auth-form .primary-setting { margin-top: 8px; }
+.auth-switch { width: 100%; height: 36px; background: transparent; color: #6c7881; font-size: 13px; }
+.auth-error { margin: 0; color: var(--accent); font-size: 12px; }
 .privacy-note { margin-top: 24px; color: #9aa3a9; font-size: 11px; line-height: 1.65; text-align: center; }
 .toast { position: fixed; z-index: 70; left: 50%; bottom: 30px; transform: translateX(-50%); padding: 11px 17px; border-radius: 9px; background: rgba(23,32,40,.92); color: white; box-shadow: 0 10px 30px rgba(0,0,0,.16); font-size: 13px; animation: toastIn .2s ease-out; }
 @keyframes toastIn { from { transform: translate(-50%,10px); opacity: 0; } }

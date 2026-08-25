@@ -1,7 +1,7 @@
 {
   "name": "shiguang-notes",
   "version": "1.0.0",
-  "description": "跨手机与电脑、自动同步百度网盘的离线优先备忘录",
+  "description": "跨手机与电脑、自动同步阿里云 OSS 的离线优先备忘录",
   "author": "jeffrey0328",
   "private": true,
   "type": "module",

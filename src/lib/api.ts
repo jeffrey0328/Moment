@@ -13,8 +13,3 @@ export function hasApiEndpoint() {
   if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) return false
   return ['http:', 'https:'].includes(window.location.protocol)
 }
-
-export function oauthReturnUrl() {
-  if (window.momentDesktop?.isDesktop) return 'moment://oauth-complete'
-  return undefined
-}

@@ -25,6 +25,7 @@ export interface CloudStatus {
   connected: boolean
   accountName?: string
   remoteDir?: string
+  inviteRequired?: boolean
 }
 
 export type SyncPhase = 'idle' | 'syncing' | 'synced' | 'offline' | 'error' | 'unconfigured'
