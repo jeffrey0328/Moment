@@ -116,3 +116,15 @@ npm run ios:open
 - `Moment-Windows-Installer`：Windows NSIS 安装包
 
 在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 添加 `MOMENT_API_URL`，值为已部署的 HTTPS 后端地址。之后推送到 `main`、打开 PR、发布 `v*` 标签，或在 **Actions → Build native apps → Run workflow** 手动运行，都会构建安装包。
+
+## 应用内更新
+
+手机和桌面安装包可以在「设置 → 应用更新」里检查新版本，Android / Windows 会直接下载并唤起系统安装界面。网页版会打开对应的 GitHub Release 页面。
+
+发布流程：
+
+1. 把 `package.json` 的 `version` 改成新版本号，例如 `1.1.0`。
+2. 推送标签 `v1.1.0`。GitHub Actions 会构建 Android APK 与 Windows 安装包，并发布到 GitHub Release。
+3. 安装包启动后会查询 `/api/app-update`（若已配置后端）或 GitHub `releases/latest`，发现更高版本即可在应用内更新。
+
+没有标签发布时，接口会返回当前 `package.json` 版本，客户端显示「已是最新版本」。若不想用 GitHub，可把 `DATA_DIR/app-update.json` 或 `APP_UPDATE_FEED` 指到自建清单，字段为 `version`、`notes`、`releaseUrl`、`downloads.android` / `downloads.windows` 等 HTTPS 地址。
