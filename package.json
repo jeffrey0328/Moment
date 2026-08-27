@@ -75,6 +75,21 @@
       ],
       "artifactName": "Moment-${version}-Windows-${arch}.${ext}"
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "perMachine": false,
+      "unicode": true,
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
+      "language": "2052",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "拾光记"
+    },
     "mac": {
       "target": [
         "dmg"

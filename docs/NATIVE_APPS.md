@@ -71,6 +71,8 @@ npm run desktop:pack
 
 Electron 壳启用了 `contextIsolation`、renderer sandbox、`nodeIntegration: false`、`webSecurity: true` 和导航/权限白名单。同步登录在应用窗口内完成。
 
+Windows NSIS 安装包使用辅助安装向导：可以选择仅为当前用户或所有用户安装，并自行指定安装目录。默认仍安装到当前用户目录；若选到 `Program Files` 等受保护位置，安装器会请求管理员权限。
+
 跨系统产物需要在对应系统构建。对外分发前应配置 Windows Authenticode 和 Apple Developer ID 签名，否则系统会显示“未知发布者”。
 
 ## Android
