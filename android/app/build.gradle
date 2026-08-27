@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+def pkgFile = file('../../package.json')
+def pkgVersion = '1.0.0'
+def pkgVersionCode = 1
+if (pkgFile.exists()) {
+    def pkg = new groovy.json.JsonSlurper().parseText(pkgFile.getText('UTF-8'))
+    pkgVersion = pkg.version ?: '1.0.0'
+    def parts = pkgVersion.tokenize('.')
+    def major = parts.size() > 0 ? parts[0].replaceAll('[^0-9]', '').toInteger() : 0
+    def minor = parts.size() > 1 ? parts[1].replaceAll('[^0-9]', '').toInteger() : 0
+    def patch = parts.size() > 2 ? parts[2].replaceAll('[^0-9]', '').toInteger() : 0
+    pkgVersionCode = major * 10000 + minor * 100 + patch
+}
+
 android {
     namespace = "com.jeffrey.moment"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +20,8 @@ android {
         applicationId "com.jeffrey.moment"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode pkgVersionCode
+        versionName pkgVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

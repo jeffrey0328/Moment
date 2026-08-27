@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser'
 import multer from 'multer'
 import { clearSession, encodeSession, readSession, requireSession, saveSession, type UserSession } from './auth.js'
 import { authenticateUser, inviteRequired, registerUser } from './users.js'
+import { resolveAppUpdate } from './app-update.js'
 import {
   assertOwnedKey,
   attachmentKey,
@@ -90,6 +91,14 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true })
+  })
+
+  app.get('/api/app-update', async (_req, res) => {
+    try {
+      res.json(await resolveAppUpdate())
+    } catch (error) {
+      sendError(res, error)
+    }
   })
 
   app.get('/api/status', (req, res) => {

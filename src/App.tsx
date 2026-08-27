@@ -4,8 +4,10 @@ import {
   MoreHorizontal, RefreshCw, Search, Settings, Sparkles, WifiOff, X,
 } from 'lucide-react'
 import { Composer } from './components/Composer'
+import { AppUpdateSection, UpdateBanner } from './components/AppUpdate'
 import { NoteMedia, NotePreview } from './components/NoteContent'
 import { getMeta, listNotes, putNote } from './lib/db'
+import { applyAppUpdate, checkAppUpdate, detectAppPlatform, type AppUpdateCheck } from './lib/app-update'
 import { getCloudStatus, loginAccount, logoutAccount, registerAccount, syncNow } from './lib/sync'
 import type { CloudStatus, Note, SyncPhase } from './types'
 
@@ -41,6 +43,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mobileComposer, setMobileComposer] = useState(false)
   const [toast, setToast] = useState<string>()
+  const [updateNotice, setUpdateNotice] = useState<AppUpdateCheck>()
 
   const notify = useCallback((message: string) => {
     setToast(message)
@@ -117,6 +120,16 @@ export default function App() {
     }
   }, [cloud.connected, runSync])
 
+  useEffect(() => {
+    if (detectAppPlatform() === 'web') return
+    const timer = window.setTimeout(() => {
+      checkAppUpdate().then((result) => {
+        if (result.available && result.inAppInstall) setUpdateNotice(result)
+      }).catch(() => undefined)
+    }, 900)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   const filteredNotes = useMemo(() => notes.filter((note) => {
     const date = new Date(note.createdAt)
     const label = dayKey(date)
@@ -183,6 +196,19 @@ export default function App() {
           </button>
           <button className="mobile-settings" onClick={() => setSettingsOpen(true)} aria-label="设置"><Settings /></button>
         </header>
+        {updateNotice && (
+          <UpdateBanner
+            update={updateNotice}
+            onLater={() => setUpdateNotice(undefined)}
+            onApply={() => {
+              const pending = updateNotice
+              setUpdateNotice(undefined)
+              void applyAppUpdate(pending).then(() => notify('已开始安装更新')).catch((error) => {
+                notify(error instanceof Error ? error.message : '更新失败，请稍后重试')
+              })
+            }}
+          />
+        )}
 
         <div className="content-grid">
           <section className="note-rail" aria-label="记录列表">
@@ -231,6 +257,7 @@ export default function App() {
           cloud={cloud}
           lastSync={lastSync}
           phase={phase}
+          notify={notify}
           onClose={() => setSettingsOpen(false)}
           onLoggedIn={(status) => {
             setCloud(status)
@@ -251,10 +278,11 @@ export default function App() {
   )
 }
 
-function SettingsPanel({ cloud, lastSync, phase, onClose, onLoggedIn, onDisconnect, onSync }: {
+function SettingsPanel({ cloud, lastSync, phase, notify, onClose, onLoggedIn, onDisconnect, onSync }: {
   cloud: CloudStatus
   lastSync?: string
   phase: SyncPhase
+  notify: (message: string) => void
   onClose: () => void
   onLoggedIn: (status: CloudStatus) => void
   onDisconnect: () => Promise<void>
@@ -298,7 +326,7 @@ function SettingsPanel({ cloud, lastSync, phase, onClose, onLoggedIn, onDisconne
   return (
     <div className="modal-layer" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }}>
       <section className="settings-panel">
-        <header><button onClick={onClose}><ChevronLeft /></button><div><h2>同步设置</h2><p>让每台设备看到同一份记录</p></div><button onClick={onClose}><X /></button></header>
+        <header><button onClick={onClose}><ChevronLeft /></button><div><h2>设置</h2><p>同步记录，并保持应用为最新版本</p></div><button onClick={onClose}><X /></button></header>
         <div className="cloud-hero"><span><Cloud /></span><div><strong>阿里云 OSS</strong><p>{heroDetail}</p></div><i className={cloud.connected ? 'connected' : ''}>{cloud.connected ? '已连接' : '未连接'}</i></div>
         {!cloud.configured && <div className="setup-help"><strong>需要完成一次服务端配置</strong><p>网页请复制 <code>.env.example</code> 为 <code>.env</code>，填写阿里云 OSS 与 <code>APP_SECRET</code> 后重启服务。手机或桌面安装包还要在构建时设置 <code>VITE_API_BASE_URL</code> 指向该 HTTPS 后端，否则只能离线使用。</p></div>}
         <div className="setting-row"><span>对象前缀</span><strong>{cloud.remoteDir || 'oss://bucket/shiguang/<账号>/'}</strong></div>
@@ -306,7 +334,7 @@ function SettingsPanel({ cloud, lastSync, phase, onClose, onLoggedIn, onDisconne
         <div className="setting-row"><span>最近同步</span><strong>{lastSync ? new Date(lastSync).toLocaleString('zh-CN') : '尚未同步'}</strong></div>
         {cloud.connected ? (
           <>
-            <button className="primary-setting" disabled={phase === 'syncing'} onClick={onSync}>{phase === 'syncing' ? <LoaderCircle className="spin" /> : <RefreshCw />}立即检查更新</button>
+            <button className="primary-setting" disabled={phase === 'syncing'} onClick={onSync}>{phase === 'syncing' ? <LoaderCircle className="spin" /> : <RefreshCw />}立即同步</button>
             <button className="disconnect" onClick={() => void onDisconnect()}>退出账号</button>
           </>
         ) : cloud.configured ? (
@@ -321,6 +349,7 @@ function SettingsPanel({ cloud, lastSync, phase, onClose, onLoggedIn, onDisconne
         ) : (
           <button className="primary-setting" disabled><Cloud />登录同步账号</button>
         )}
+        <AppUpdateSection notify={notify} />
         <p className="privacy-note">记录先保存在你的设备，登录后写入你在服务端配置的阿里云 OSS 私有 Bucket，并按账号前缀隔离。OSS 密钥只留在服务端，安装包和浏览器都拿不到。</p>
       </section>
     </div>
