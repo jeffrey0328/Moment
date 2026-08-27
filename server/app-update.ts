@@ -100,7 +100,8 @@ export async function resolveAppUpdate(options: ResolveAppUpdateOptions = {}): P
     downloads: {},
   }
 
-  const fromFile = await readLocalManifest(options.dataDir || process.env.DATA_DIR)
+  const dataDir = options.dataDir || process.env.DATA_DIR || path.join(process.cwd(), 'data')
+  const fromFile = await readLocalManifest(dataDir)
   if (fromFile) return fromFile
 
   const feedUrl = options.feedUrl || process.env.APP_UPDATE_FEED?.trim()

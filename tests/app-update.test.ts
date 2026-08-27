@@ -76,34 +76,46 @@ test('resolveAppUpdate prefers DATA_DIR/app-update.json', async () => {
 
 test('resolveAppUpdate reads GitHub latest when no local override exists', async () => {
   resetAppUpdateCacheForTests()
-  const manifest = await resolveAppUpdate({
-    packageVersion: '1.0.0',
-    repo: 'jeffrey0328/Moment',
-    fetchImpl: async (input) => {
-      assert.match(String(input), /repos\/jeffrey0328\/Moment\/releases\/latest/)
-      return new Response(JSON.stringify({
-        tag_name: 'v1.4.0',
-        body: '应用内更新',
-        html_url: 'https://github.com/jeffrey0328/Moment/releases/tag/v1.4.0',
-        assets: [
-          { name: 'Moment-1.4.0-Android.apk', browser_download_url: 'https://github.com/jeffrey0328/Moment/releases/download/v1.4.0/Moment-1.4.0-Android.apk' },
-        ],
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
-    },
-  })
-  assert.equal(manifest.version, '1.4.0')
-  assert.equal(manifest.source, 'github')
-  assert.ok(manifest.downloads.android?.endsWith('.apk'))
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'moment-update-empty-'))
+  try {
+    const manifest = await resolveAppUpdate({
+      dataDir: dir,
+      packageVersion: '1.0.0',
+      repo: 'jeffrey0328/Moment',
+      fetchImpl: async (input) => {
+        assert.match(String(input), /repos\/jeffrey0328\/Moment\/releases\/latest/)
+        return new Response(JSON.stringify({
+          tag_name: 'v1.4.0',
+          body: '应用内更新',
+          html_url: 'https://github.com/jeffrey0328/Moment/releases/tag/v1.4.0',
+          assets: [
+            { name: 'Moment-1.4.0-Android.apk', browser_download_url: 'https://github.com/jeffrey0328/Moment/releases/download/v1.4.0/Moment-1.4.0-Android.apk' },
+          ],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      },
+    })
+    assert.equal(manifest.version, '1.4.0')
+    assert.equal(manifest.source, 'github')
+    assert.ok(manifest.downloads.android?.endsWith('.apk'))
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
 })
 
 test('resolveAppUpdate falls back to package version when GitHub has no release', async () => {
   resetAppUpdateCacheForTests()
-  const manifest = await resolveAppUpdate({
-    packageVersion: '1.0.0',
-    fetchImpl: async () => new Response('Not Found', { status: 404 }),
-  })
-  assert.equal(manifest.version, '1.0.0')
-  assert.equal(manifest.source, 'package')
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'moment-update-empty-'))
+  try {
+    const manifest = await resolveAppUpdate({
+      dataDir: dir,
+      packageVersion: '1.0.0',
+      fetchImpl: async () => new Response('Not Found', { status: 404 }),
+    })
+    assert.equal(manifest.version, '1.0.0')
+    assert.equal(manifest.source, 'package')
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
 })
 
 test('GET /api/app-update returns the local override', async () => {
